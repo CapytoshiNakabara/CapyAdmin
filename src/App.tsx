@@ -41,13 +41,13 @@ function App() {
     const fromSeconds = Math.floor(fromDateAndTime.getTime() / 1000)
     const toSeconds = Math.floor(toDateAndTime.getTime() / 1000)
 
-    const fromBlockResponse = await fetch(`https://api${isTest && "-testnet"}.bscscan.com/api?module=block&action=getblocknobytime&timestamp=${fromSeconds}&closest=before&apikey=7EYHFFCBKGK7TBDYXV8X4NH9Y8EBXA2CHX`)
+    const fromBlockResponse = await fetch(`https://api${isTest ? "-testnet" : ""}.bscscan.com/api?module=block&action=getblocknobytime&timestamp=${fromSeconds}&closest=before&apikey=7EYHFFCBKGK7TBDYXV8X4NH9Y8EBXA2CHX`)
     const fromBlock = await fromBlockResponse.json()
 
-    const toBlockResponse = await fetch(`https://api${isTest && "-testnet"}.bscscan.com/api?module=block&action=getblocknobytime&timestamp=${toSeconds}&closest=after&apikey=7EYHFFCBKGK7TBDYXV8X4NH9Y8EBXA2CHX`)
+    const toBlockResponse = await fetch(`https://api${isTest ? "-testnet" : ""}.bscscan.com/api?module=block&action=getblocknobytime&timestamp=${toSeconds}&closest=after&apikey=7EYHFFCBKGK7TBDYXV8X4NH9Y8EBXA2CHX`)
     const toBlock = await toBlockResponse.json()
 
-    const resullt = await fetch(`https://api${isTest && "-testnet"}.bscscan.com/api?module=account&action=tokentx&address=${fromAddress}&contractaddress=${tokenAddress}&startblock=${fromBlock.result}&endblock=${toBlock.result}&sort=asc&apikey=7EYHFFCBKGK7TBDYXV8X4NH9Y8EBXA2CHX`)
+    const resullt = await fetch(`https://api${isTest ? "-testnet" : ""}.bscscan.com/api?module=account&action=tokentx${fromAddress ? `&address=${fromAddress}` : ""}&contractaddress=${tokenAddress}&startblock=${fromBlock.result}&endblock=${toBlock.result}&sort=asc&apikey=7EYHFFCBKGK7TBDYXV8X4NH9Y8EBXA2CHX`)
     const allres = await resullt.json()
 
     let grouped = allres.result.reduce(
