@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import './App.css'
 import { ethers } from 'ethers'
-import Web3, { EventLog } from 'web3';
-import babyABI from "./Babyabi.json"
+// import Web3 from 'web3';
 import { Transfer } from './Models/Transfer';
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,7 +18,7 @@ import { BuyersTable } from './components/BuyersTable/BuyersTable';
 
 
 function App() {
-  const web3 = new Web3('https://go.getblock.io/a4d8d0664ef540cea820fc5a2e5ef237'); // Use a BSC node
+  // const web3 = new Web3('https://go.getblock.io/a4d8d0664ef540cea820fc5a2e5ef237'); // Use a BSC node
   const [fromDate, setFromDate] = useState()
   const [fromHour, setFromHour] = useState("00")
   const [fromMinutes, setFromMinutes] = useState("00")
@@ -101,7 +100,7 @@ function App() {
 
       setBuyers(newBuyers)
       console.log(newBuyers);
-      // exportToCsv(newBuyers)
+      exportToCsv(newBuyers)
 
     }
     catch (ex) {
@@ -135,10 +134,6 @@ function App() {
     document.body.appendChild(x);
     x.click();
 
-  }
-
-  const renderDateUtc = () => {
-    return new Date(`${fromDate} ${fromHour}:${fromMinutes}`).toString()
   }
 
   return (
