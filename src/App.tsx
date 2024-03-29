@@ -1,11 +1,25 @@
 import { useState } from 'react'
 import './App.css'
 import { ethers } from 'ethers'
+import Web3, { EventLog } from 'web3';
+import babyABI from "./Babyabi.json"
+import { Transfer } from './Models/Transfer';
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
+import { Buyer } from './Models/Buyer';
+import { BuyersTable } from './components/BuyersTable/BuyersTable';
+
 
 function App() {
-  // const web3test = new Web3('https://go.getblock.io/cff88efce70347b2b8c66113eecefdd0'); // Use a BSC node
-
-
+  const web3 = new Web3('https://go.getblock.io/a4d8d0664ef540cea820fc5a2e5ef237'); // Use a BSC node
   const [fromDate, setFromDate] = useState()
   const [fromHour, setFromHour] = useState("00")
   const [fromMinutes, setFromMinutes] = useState("00")
@@ -14,7 +28,9 @@ function App() {
   const [toMinutes, setToMinutes] = useState("00")
   const [isFetching, setIsFetching] = useState(false)
   const [fromAddress, setFromAddress] = useState()
-  const [tokenAddress, setTokenAddress] = useState()
+  const [tokenAddress, setTokenAddress] = useState("0xc748673057861a797275CD8A068AbB95A902e8de")
+  const [buyers, setBuyers] = useState<Buyer[]>([])
+  const [airdropAmount, setAirdropAmount] = useState<number>(0)
 
   const hours = () => {
     let allHours = []
@@ -32,41 +48,74 @@ function App() {
     return allMinutes
   }
 
-  const logValues = async (isTest: boolean) => {
-    setIsFetching(true)
+  const fetchWallets = async (isTest: boolean) => {
+    try {
 
-    const fromDateAndTime = new Date(`${fromDate} ${fromHour}:${fromMinutes}`)
-    const toDateAndTime = new Date(`${toDate} ${toHour}:${toMinutes}`)
+      setIsFetching(true)
 
-    const fromSeconds = Math.floor(fromDateAndTime.getTime() / 1000)
-    const toSeconds = Math.floor(toDateAndTime.getTime() / 1000)
+      const fromDateAndTime = new Date(`${fromDate} ${fromHour}:${fromMinutes}`)
+      const toDateAndTime = new Date(`${toDate} ${toHour}:${toMinutes}`)
 
-    const fromBlockResponse = await fetch(`https://api${isTest ? "-testnet" : ""}.bscscan.com/api?module=block&action=getblocknobytime&timestamp=${fromSeconds}&closest=before&apikey=7EYHFFCBKGK7TBDYXV8X4NH9Y8EBXA2CHX`)
-    const fromBlock = await fromBlockResponse.json()
+      const fromSeconds = Math.floor(fromDateAndTime.getTime() / 1000)
+      const toSeconds = Math.floor(toDateAndTime.getTime() / 1000)
 
-    const toBlockResponse = await fetch(`https://api${isTest ? "-testnet" : ""}.bscscan.com/api?module=block&action=getblocknobytime&timestamp=${toSeconds}&closest=after&apikey=7EYHFFCBKGK7TBDYXV8X4NH9Y8EBXA2CHX`)
-    const toBlock = await toBlockResponse.json()
+      const fromBlockResponse = await fetch(`https://api${isTest ? "-testnet" : ""}.bscscan.com/api?module=block&action=getblocknobytime&timestamp=${fromSeconds}&closest=before&apikey=7EYHFFCBKGK7TBDYXV8X4NH9Y8EBXA2CHX`)
+      const fromBlock = await fromBlockResponse.json()
 
-    const resullt = await fetch(`https://api${isTest ? "-testnet" : ""}.bscscan.com/api?module=account&action=tokentx${fromAddress ? `&address=${fromAddress}` : ""}&contractaddress=${tokenAddress}&startblock=${fromBlock.result}&endblock=${toBlock.result}&sort=asc&apikey=7EYHFFCBKGK7TBDYXV8X4NH9Y8EBXA2CHX`)
-    const allres = await resullt.json()
+      const toBlockResponse = await fetch(`https://api${isTest ? "-testnet" : ""}.bscscan.com/api?module=block&action=getblocknobytime&timestamp=${toSeconds}&closest=after&apikey=7EYHFFCBKGK7TBDYXV8X4NH9Y8EBXA2CHX`)
+      const toBlock = await toBlockResponse.json()
 
-    let grouped = allres.result.reduce(
-      (result: any, currentValue: any) => {
-        (result[currentValue['to']] = result[currentValue['to']] || []).push(currentValue);
-        return result;
-      }, {});
+      const resullt = await fetch(`https://api${isTest ? "-testnet" : ""}.bscscan.com/api?module=account&action=tokentx${fromAddress ? `&address=${fromAddress}` : ""}&contractaddress=${tokenAddress}&startblock=${fromBlock.result}&endblock=${toBlock.result}&sort=asc&apikey=7EYHFFCBKGK7TBDYXV8X4NH9Y8EBXA2CHX`)
+      const allres = await resullt.json()
+      const transfers = allres.result as Transfer[]
+      console.log(transfers.map((t) => {
+        return { ...t, actualDate: new Date(+t.timeStamp * 1000) }
+      }));
 
-    let recieversWithAmount: any[] = []
-    Object.entries(grouped).forEach(([a, b]) => {
-      const values: [] = (b as any).map((ba: any) => ethers.formatUnits(ba.value, 18))
-      let amount = 0
-      values.forEach(val => amount += +val)
-      recieversWithAmount.push({ reviever: a, amount })
-    })
-    console.log(recieversWithAmount);
-    exportToCsv(recieversWithAmount)
+      let groupedTransfers = transfers.reduce(
+        (result: any, currentValue) => {
+          (result[currentValue.to] = result[currentValue.to] || []).push(currentValue);
+          return result;
+        }, {});
 
-    setIsFetching(false)
+      let newBuyers: Buyer[] = []
+      Object.entries(groupedTransfers).forEach(([recieverAddress, b]) => {
+        const transfers = (b as Transfer[])
+        const tokenDecimal = transfers[0].tokenDecimal
+
+        const values = transfers.map((ba) => ethers.formatUnits(ba.value, +tokenDecimal))
+        let amount = 0
+        values.forEach(val => amount += +val)
+        newBuyers.push({ walletAddress: recieverAddress, amount, numberOfBuys: transfers.length, amountToBeAirdroped: 0, sharePercentage: 0 })
+      })
+
+      const totalAmountBought = newBuyers.reduce((accumulator, currentValue) => accumulator + currentValue.amount, 0)
+
+      for (let index = 0; index < newBuyers.length; index++) {
+        const sharePercentage = calculatePercentage(newBuyers[index].amount, totalAmountBought)
+        const amountToBeAirdroped = (sharePercentage / 100) * airdropAmount
+
+        newBuyers[index].sharePercentage = sharePercentage
+        newBuyers[index].amountToBeAirdroped = amountToBeAirdroped
+      }
+
+      setBuyers(newBuyers)
+      console.log(newBuyers);
+      // exportToCsv(newBuyers)
+
+    }
+    catch (ex) {
+      console.error(ex);
+    }
+    finally {
+      setIsFetching(false)
+
+    }
+  }
+
+  const calculatePercentage = (value: number, totalAmount: number) => {
+    return (100 * value) / totalAmount
+    // return ((value - totalAmount) / value * 100).toFixed(3)
   }
 
   const exportToCsv = (arrayToCsv: any[]) => {
@@ -85,64 +134,96 @@ function App() {
     x.setAttribute("download", "token_buyers.csv");
     document.body.appendChild(x);
     x.click();
+
+  }
+
+  const renderDateUtc = () => {
+    return new Date(`${fromDate} ${fromHour}:${fromMinutes}`).toString()
   }
 
   return (
     <>
-      <h1>Capy Admin</h1>
+      <h1 className='scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl'>Capy Admin</h1>
       <div className="card">
-        <label htmlFor="#fromDate">Date from: </label>
-        <input id="fromDate" type='date' placeholder='Från' onChange={(e) => setFromDate(e.target.value as any)} />
-        <label htmlFor="#fromTime"> Time from: </label>
-        <select onChange={(e) => setFromHour(e.target.value)}>
-          {
-            hours().map((h, key) =>
-              <option key={key} value={h}>{h}</option>)
-          }
-        </select>
-        <select onChange={(e) => setFromMinutes(e.target.value)}>
-          {
-            minutes().map((h, key) =>
-              <option key={key} value={h}>{h}</option>)
-          }
-        </select>
-        <br />
-        <br />
+        <div className='stack'>
+          <div className='flex-1'>
+            <Label htmlFor="#fromDate">Date from: </Label >
+            <div className='date-group'>
+              <Input id="fromDate" type='date' placeholder='Från' onChange={(e) => setFromDate(e.target.value as any)} />
+              <Select onValueChange={(e) => setFromHour(e)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Hour" />
+                </SelectTrigger>
+                <SelectContent>
+                  {
+                    hours().map((h, key) =>
+                      <SelectItem key={key} value={h}>{h}</SelectItem>)
+                  }
+                </SelectContent>
+              </Select>
+              <Select onValueChange={(e) => setFromMinutes(e)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Minute" />
+                </SelectTrigger>
+                <SelectContent>
+                  {
+                    minutes().map((h, key) =>
+                      <SelectItem key={key} value={h}>{h}</SelectItem>)
+                  }
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className='flex-1'>
+            <Label htmlFor="#toDate">Date to: </Label >
+            <div className='date-group'>
+              <Input id="toDate" type='date' placeholder='Till' onChange={(e) => setToDate(e.target.value as any)} />
+              <Select onValueChange={(e) => setToHour(e)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Hour" />
+                </SelectTrigger>
+                <SelectContent>
+                  {
+                    minutes().map((h, key) =>
+                      <SelectItem key={key} value={h}>{h}</SelectItem>)
+                  }
+                </SelectContent>
+              </Select>
+              <Select onValueChange={(e) => setToMinutes(e)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Minute" />
+                </SelectTrigger>
+                <SelectContent>
+                  {
+                    minutes().map((h, key) =>
+                      <SelectItem key={key} value={h}>{h}</SelectItem>)
+                  }
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+        <div className='stack'>
+          <div className='flex-1'>
+            <Label htmlFor="#tokenAddress">Token address</Label >
+            <Input id="tokenAddress" placeholder='Token address' value={tokenAddress} onChange={(e) => setTokenAddress(e.target.value as any)} />
+          </div>
+          <div className='flex-1'>
+            <Label htmlFor="#fromAddress">From address (Has to be a liquidity pool)</Label >
+            <Input id="fromAddress" placeholder='From address' value={fromAddress} onChange={(e) => setFromAddress(e.target.value as any)} />
+          </div>
+        </div>
+        <Label htmlFor="#airdropAmount">Amount to be airdropped</Label >
+        <Input id="airdropAmount" placeholder='Airdrop' value={airdropAmount} onChange={(e) => setAirdropAmount(e.target.value as any)} />
 
-        <label htmlFor="#toDate">Date to: </label>
-        <input id="toDate" type='date' placeholder='Till' onChange={(e) => setToDate(e.target.value as any)} />
-        <label htmlFor="#toTime"> Time to: </label>
-        <select onChange={(e) => setToHour(e.target.value)}>
-          {
-            hours().map((h, key) =>
-              <option key={key} value={h}>{h}</option>)
-          }
-        </select>
-        <select onChange={(e) => setToMinutes(e.target.value)}>
-          {
-            minutes().map((h, key) =>
-              <option key={key} value={h}>{h}</option>)
-          }
-        </select>
-        <br />
-        <br />
-        <br />
 
-        <label htmlFor="#tokenAddress">Token address: </label>
-        <input id="tokenAddress" placeholder='Token address' value={tokenAddress} onChange={(e) => setTokenAddress(e.target.value as any)} />
-        <br />
-        <label htmlFor="#fromAddress">From address (Has to be a liquidity pool): </label>
-        <input id="fromAddress" placeholder='From address' value={fromAddress} onChange={(e) => setFromAddress(e.target.value as any)} />
-        <br />
-
-        <button onClick={() => logValues(false)}>
+        <Button onClick={() => fetchWallets(false)} className='custom-button'>
           {isFetching ? "Loading..." : "Find buyers (Mainnet)"}
-        </button>
-        <br />
-
-        <button onClick={() => logValues(true)}>
+        </Button>
+        <Button onClick={() => fetchWallets(true)} variant="outline" className='custom-button'>
           {isFetching ? "Loading..." : "Find buyers (Testnet)"}
-        </button>
+        </Button>
+        <BuyersTable buyers={buyers}  />
       </div>
     </>
   )
