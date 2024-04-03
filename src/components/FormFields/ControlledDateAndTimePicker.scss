@@ -1,0 +1,14 @@
+.form-controlled-date-and-time-picker {
+    &__inputs {
+        display: flex;
+        gap: 10px;
+
+        input {
+            flex: 2
+        }
+
+        button {
+            flex: 1;
+        }
+    }
+}
