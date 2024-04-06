@@ -36,15 +36,7 @@
 }
 
 .card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
-}
-
-.date-group {
-  display: flex;
+  padding-top: 2em;
 }
 
 .stack {

@@ -1,7 +1,7 @@
-import { Buyer } from "@/Models/Buyer"
 import {
     Table,
     TableBody,
+    TableCaption,
     TableCell,
     TableFooter,
     TableHead,
@@ -11,98 +11,46 @@ import {
 import { Button } from "../ui/button"
 import { Transfer } from "@/Models/Transfer"
 import { useEffect, useMemo, useState } from "react"
-import { ethers } from 'ethers'
 import "./BuyersTable.scss"
 import { Input } from "@/components/ui/input"
+import { useBuyersTable } from "@/Hooks/useBuyersTable"
+import { Pagination } from "../Pagination/Pagination"
 
 interface Props {
     transfers: Transfer[]
 }
 
 export const BuyersTable = ({ transfers }: Props) => {
-
-    const [buyers, setBuyers] = useState<Buyer[]>()
     const [airdropAmount, setAirdropAmount] = useState<number>(0)
+    const [page, setPage] = useState<number>(0)
+    const pageSize = 15
+    const {
+        buyers,
+        mapBuyers,
+        exportToCsv,
+        totalAmount,
+        totalNumberOfBuys,
+        totalAmountToBeAirdroped,
+        paginatedBuyers } = useBuyersTable(transfers, page, pageSize, airdropAmount)
 
     useEffect(() => {
-        mapTransfers()
+        mapBuyers()
     }, [transfers])
 
-    const mapTransfers = () => {
-        if (transfers.length > 0) {
-            let groupedTransfers = transfers.reduce(
-                (result: any, currentValue) => {
-                    (result[currentValue.to] = result[currentValue.to] || []).push(currentValue);
-                    return result;
-                }, {});
-
-            let newBuyers: Buyer[] = []
-            Object.entries(groupedTransfers).forEach(([recieverAddress, b]) => {
-                const transfers = (b as Transfer[])
-                const tokenDecimal = transfers[0].tokenDecimal
-
-                const values = transfers.map((ba) => ethers.formatUnits(ba.value, +tokenDecimal))
-                let amount = 0
-                values.forEach(val => amount += +val)
-                newBuyers.push({ walletAddress: recieverAddress, amount, numberOfBuys: transfers.length, amountToBeAirdroped: 0, sharePercentage: 0 })
-            })
-
-            const totalAmountBought = newBuyers.reduce((accumulator, currentValue) => accumulator + currentValue.amount, 0)
-            for (let index = 0; index < newBuyers.length; index++) {
-                const sharePercentage = calculatePercentage(newBuyers[index].amount, totalAmountBought)
-                const amountToBeAirdroped = (sharePercentage / 100) * airdropAmount
-
-                newBuyers[index].sharePercentage = sharePercentage
-                newBuyers[index].amountToBeAirdroped = amountToBeAirdroped
-            }
-
-            setBuyers(newBuyers)
+    const getTableCaption = useMemo((): string => {
+        if (page === 0) {
+            return `Showing 1-${pageSize} out of ${buyers.length} buyers.`
         }
         else {
-            setBuyers([])
+            const startBuyer = (page * pageSize) + 1
+            let endBuyer = (startBuyer + pageSize) - 1
+            if (endBuyer > buyers.length) {
+                console.log("jaha");
+                endBuyer = buyers.length
+            }
+            return `Showing ${startBuyer}-${endBuyer} out of ${buyers.length} buyers.`
         }
-    }
-
-    const calculatePercentage = (value: number, totalAmount: number) => {
-        return (100 * value) / totalAmount
-    }
-
-    const exportToCsv = () => {
-        if (buyers) {
-            let CsvString = "Wallet address,Airdrop";
-            CsvString += "\r\n";
-            buyers.forEach((item, _index) => {
-                CsvString += `${item.walletAddress},`
-                CsvString += `${item.amountToBeAirdroped},`
-                CsvString += "\r\n";
-            })
-
-            CsvString = "data:application/csv," + encodeURIComponent(CsvString);
-            var x = document.createElement("A");
-            x.setAttribute("href", CsvString);
-            x.setAttribute("download", "token_buyers.csv");
-            document.body.appendChild(x);
-            x.click();
-        }
-    }
-
-    const totalAmount = useMemo(() => {
-        if (buyers) {
-            return buyers.reduce((accumulator, currentValue) => accumulator + currentValue.amount, 0)
-        }
-    }, [buyers])
-
-    const totalNumberOfBuys = useMemo(() => {
-        if (buyers) {
-            return buyers.reduce((accumulator, currentValue) => accumulator + currentValue.numberOfBuys, 0)
-        }
-    }, [buyers])
-
-    const totalAmountToBeAirdroped = useMemo(() => {
-        if (buyers) {
-            return buyers.reduce((accumulator, currentValue) => accumulator + currentValue.amountToBeAirdroped, 0)
-        }
-    }, [buyers])
+    }, [pageSize, page, buyers])
 
     return (
         <div className="buyers-table">
@@ -111,13 +59,17 @@ export const BuyersTable = ({ transfers }: Props) => {
                     <div className="buyers-table__actions">
                         <div className="flex w-full max-w-sm items-center space-x-2">
                             <Input placeholder="Total amount to be airdroped"
-                                // value={airdropAmount?.toLocaleString() ?? 0}
-                                onChange={(e) => setAirdropAmount(parseInt(e.target.value))} />
-                            <Button variant="outline" onClick={() => mapTransfers()}>Calculate airdrops</Button>
+                                value={Intl.NumberFormat("sv-SE").format(airdropAmount)}
+                                onChange={(e) => {
+                                    const formatedValue = e.target.value.replace(/\s+/g, "")
+                                    setAirdropAmount(!formatedValue ? 0 : parseInt(formatedValue))
+                                }} />
+                            <Button variant="outline" onClick={() => mapBuyers()}>Calculate airdrops</Button>
                         </div>
                         <Button onClick={() => exportToCsv()}>Exportera till csv</Button>
                     </div>
                     <Table>
+                        <TableCaption>{getTableCaption}</TableCaption>
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Wallet address</TableHead>
@@ -128,12 +80,12 @@ export const BuyersTable = ({ transfers }: Props) => {
                         </TableHeader>
                         <TableBody>
                             {
-                                buyers.map((buyer, key) =>
+                                paginatedBuyers.map((buyer, key) =>
                                     <TableRow key={key}>
                                         <TableCell>{buyer.walletAddress}</TableCell>
-                                        <TableCell>{buyer.amount} ({buyer.sharePercentage.toFixed(2)}%)</TableCell>
+                                        <TableCell>{Intl.NumberFormat("sv-SE").format(buyer.amount)} ({buyer.sharePercentage.toFixed(10)}%)</TableCell>
                                         <TableCell>{buyer.numberOfBuys}</TableCell>
-                                        <TableCell className="text-right">{buyer.amountToBeAirdroped}</TableCell>
+                                        <TableCell className="text-right">{Intl.NumberFormat("sv-SE").format(buyer.amountToBeAirdroped)}</TableCell>
                                     </TableRow>
                                 )
                             }
@@ -141,12 +93,13 @@ export const BuyersTable = ({ transfers }: Props) => {
                         <TableFooter>
                             <TableRow>
                                 <TableCell>Total</TableCell>
-                                <TableCell>{totalAmount}</TableCell>
+                                <TableCell>{Intl.NumberFormat("sv-SE").format(totalAmount)}</TableCell>
                                 <TableCell>{totalNumberOfBuys}</TableCell>
-                                <TableCell className="text-right">{totalAmountToBeAirdroped}</TableCell>
+                                <TableCell className="text-right">{Intl.NumberFormat("sv-SE").format(totalAmountToBeAirdroped)}</TableCell>
                             </TableRow>
                         </TableFooter>
                     </Table>
+                    {buyers.length > 0 && <Pagination currentPage={page} onChange={(newPage) => setPage(newPage)} pageSize={pageSize} totalCount={buyers.length} />}
                 </>
             }
         </div>
