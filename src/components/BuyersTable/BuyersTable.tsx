@@ -38,18 +38,15 @@ export const BuyersTable = ({ transfers }: Props) => {
     }, [transfers])
 
     const getTableCaption = useMemo((): string => {
-        if (page === 0) {
-            return `Showing 1-${pageSize} out of ${buyers.length} buyers.`
+        let startBuyer = (page * pageSize) + 1
+        if (startBuyer === 0) {
+            startBuyer = 1
         }
-        else {
-            const startBuyer = (page * pageSize) + 1
-            let endBuyer = (startBuyer + pageSize) - 1
-            if (endBuyer > buyers.length) {
-                console.log("jaha");
-                endBuyer = buyers.length
-            }
-            return `Showing ${startBuyer}-${endBuyer} out of ${buyers.length} buyers.`
+        let endBuyer = (startBuyer + pageSize) - 1
+        if (endBuyer > buyers.length) {
+            endBuyer = buyers.length
         }
+        return `Showing ${startBuyer}-${endBuyer} out of ${buyers.length} buyers.`
     }, [pageSize, page, buyers])
 
     return (

@@ -29,18 +29,22 @@ export const Pagination = ({ currentPage, onChange, pageSize, totalCount }: Prop
                 <PaginationItem>
                     <PaginationLink onClick={() => onChange(0)} isActive={currentPage === 0}>1</PaginationLink>
                 </PaginationItem>
-                <PaginationItem>
+                {totalCount > 1 * pageSize && <PaginationItem>
                     <PaginationLink onClick={() => onChange(1)} isActive={currentPage === 1}>2</PaginationLink>
-                </PaginationItem>
-                <PaginationItem>
+                </PaginationItem>}
+                {totalCount > 2 * pageSize && <PaginationItem>
                     <PaginationLink onClick={() => onChange(2)} isActive={currentPage === 2}>3</PaginationLink>
-                </PaginationItem>
-                <PaginationItem>
-                    <PaginationEllipsis onClick={() => onChange(totalPageCount)} />
-                </PaginationItem>
-                <PaginationItem>
-                    <PaginationLink onClick={() => onChange(totalPageCount)}>{totalPageCount}</PaginationLink>
-                </PaginationItem>
+                </PaginationItem>}
+                {totalCount > 2 * pageSize &&
+                    <>
+                        <PaginationItem>
+                            <PaginationEllipsis onClick={() => onChange(totalPageCount)} />
+                        </PaginationItem>
+                        <PaginationItem>
+                            <PaginationLink onClick={() => onChange(totalPageCount)}>{totalPageCount}</PaginationLink>
+                        </PaginationItem>
+                    </>
+                }
                 <PaginationItem>
                     <PaginationNext onClick={() => onChange(currentPage + 1)} />
                 </PaginationItem>

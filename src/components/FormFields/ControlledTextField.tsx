@@ -6,24 +6,28 @@ interface Props {
     name: string
     label: string
     required?: boolean
+    defaultValue?: string
+    inputButton?: React.ReactNode
 }
 
-export const ControlledTextField = ({ name, label, required }: Props) => {
+export const ControlledTextField = ({ name, label, required, defaultValue, inputButton }: Props) => {
     const { control } = useFormContext()
 
     return (
         <Controller
             control={control}
             name={name}
+            defaultValue={defaultValue}
             rules={{
                 required: required
             }}
-            render={({ field: { onChange }, fieldState: { error } }) => {
+            render={({ field: { onChange, value }, fieldState: { error } }) => {
                 return (
-                    <div className='form-controlled-text-field'>
+                    <div>
                         <Label htmlFor="#name">{label}</Label >
-                        <div className='form-controlled-text-field__inputs'>
-                            <Input id="name" onChange={(e) => onChange(e.target.value)} />
+                        <div className="flex w-full items-center space-x-2">
+                            <Input id="name" onChange={(e) => onChange(e.target.value)} value={typeof value === 'string' ? value ?? "" : ""} />
+                            {inputButton}
                         </div>
                         {error && <span style={{ color: "red" }}>Missing or invalid input</span>}
                     </div>
