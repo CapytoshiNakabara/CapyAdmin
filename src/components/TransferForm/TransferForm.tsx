@@ -16,7 +16,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Progress } from "@/components/ui/progress"
 import { useEffect, useState } from "react"
 
-
 interface Props {
     isFetchingTransfers: boolean
     fetchTransfers: (data: TransferFormData) => Promise<void>
@@ -38,7 +37,8 @@ export const TransferForm = ({ isFetchingTransfers, fetchTransfers, isFetchingBl
         control: methods.control,
         name: "addresses",
         rules: { minLength: 1 }
-    });
+    })
+
     const [progress, setProgress] = useState<number>(0)
     const [dialogDescription, setDialogDescription] = useState<string>()
     const progressSteps = 3
@@ -79,12 +79,12 @@ export const TransferForm = ({ isFetchingTransfers, fetchTransfers, isFetchingBl
                         <div className="transfer-form">
                             <div className="transfer-form__fields">
                                 <ControlledDateAndTimePicker
-                                    label="From"
+                                    label="From (UTC)"
                                     name="from"
                                     max={toValue}
                                     required />
                                 <ControlledDateAndTimePicker
-                                    label="To"
+                                    label="To (UTC)"
                                     name="to"
                                     min={fromValue}
                                     required />

@@ -16,7 +16,7 @@ export const IgnoredReceivers = ({ nestedIndex }: IgnoredReceiversProps) => {
 
     return (
         <Dialog>
-            <DialogTrigger asChild><Button variant="outline">Add ignored wallet addresses</Button></DialogTrigger>
+            <DialogTrigger asChild><Button variant="outline">Add ignored wallet addresses ({ignoredAddresses.length})</Button></DialogTrigger>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Ignored wallet addresses for contract #{nestedIndex + 1}</DialogTitle>

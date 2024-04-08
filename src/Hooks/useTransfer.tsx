@@ -12,8 +12,14 @@ export const useTransfer = () => {
 
     const fetchTransfers = useCallback(async (data: TransferFormData) => {
         setIsFetchingBlocks(true)
-        const fromSeconds = Math.floor(new Date(data.from!).getTime() / 1000)
-        const toSeconds = Math.floor(new Date(data.to!).getTime() / 1000)
+
+        const fromAsDate = new Date(data.from!)
+        const toAsDate = new Date(data.to!)
+        fromAsDate.setMinutes(fromAsDate.getMinutes() - fromAsDate.getTimezoneOffset())
+        toAsDate.setMinutes(toAsDate.getMinutes() - toAsDate.getTimezoneOffset())
+
+        const fromSeconds = Math.floor(fromAsDate.getTime() / 1000)
+        const toSeconds = Math.floor(toAsDate.getTime() / 1000)
 
         const fromBlockResponse = await fetch(`https://api.bscscan.com/api?module=block&action=getblocknobytime&timestamp=${fromSeconds}&closest=before&apikey=7EYHFFCBKGK7TBDYXV8X4NH9Y8EBXA2CHX`, { signal })
         const fromBlock = await fromBlockResponse.json()
