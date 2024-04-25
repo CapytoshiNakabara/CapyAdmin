@@ -1,9 +1,11 @@
+import { groupBy } from "@/Helpers/arrayHelpers";
 import { Transfer } from "@/Models/Transfer"
 import { TransferFormData } from "@/Models/TransferFormData"
 import { useCallback, useState } from "react"
+import Web3 from 'web3';
 
-export const useTransfer = () => {
-    const [fetchedTransfers, setFetchedTransfers] = useState<Transfer[]>([])
+export const useTransfer = (web3: Web3) => {
+    const [fetchedTransfers, setFetchedTransfers] = useState<Record<string, Transfer[]>>({})
     const [isFetchingTransfers, setIsFetchingTransfers] = useState(false)
     const [isFetchingBlocks, setIsFetchingBlocks] = useState(false)
     const [isCalculatingBuyersOfAllContracts, setIsCalculatingBuyersOfAllContracts] = useState(false)
@@ -33,11 +35,12 @@ export const useTransfer = () => {
         setIsFetchingTransfers(true)
         for (let index = 0; index < data.addresses.length; index++) {
             const address = data.addresses[index];
-            const result = await fetch(`https://api.bscscan.com/api?module=account&action=tokentx${address.fromAddress ? `&address=${address.fromAddress}` : ""}&contractaddress=${address.contractAddress}&startblock=${fromBlock.result}&endblock=${toBlock.result}&sort=asc&apikey=7EYHFFCBKGK7TBDYXV8X4NH9Y8EBXA2CHX`, { signal })
-            let resultAsJson = await result.json()
+            const response = await fetch(`https://api.bscscan.com/api?module=account&action=tokentx${address.fromAddress ? `&address=${address.fromAddress}` : ""}&contractaddress=${address.contractAddress}&startblock=${fromBlock.result}&endblock=${toBlock.result}&sort=asc&apikey=7EYHFFCBKGK7TBDYXV8X4NH9Y8EBXA2CHX`, { signal })
+            let resultAsJson = await response.json()
             let transfers = resultAsJson.result as Transfer[]
             if (address.ignoredReceivers.length > 0) {
-                transfers = transfers.filter(transfer => !address.ignoredReceivers.includes(transfer.to))
+                transfers = transfers.filter(transfer => !address.ignoredReceivers.some(r => r.toLowerCase() === transfer.to.toLowerCase()))
+                // transfers = transfers.filter(transfer => !address.ignoredReceivers.includes(transfer.to))
             }
             transfersCollection[index] = transfers
         }
@@ -64,7 +67,21 @@ export const useTransfer = () => {
 
         const buyersOfAllContractAddresses = transfersCollection[0].filter(transfer => occurrenceMap.get(transfer.to) === transfersCollection.length)
 
-        setFetchedTransfers(buyersOfAllContractAddresses)
+        const groupedTransfers = groupBy(buyersOfAllContractAddresses, "to")
+
+        // Find and delete contract addresses
+        const checks = Object.entries(groupedTransfers).filter(g => g[1].length >= 10).map(async (g) => {
+            await web3.eth.getCode(g[0])
+                .then(code => {
+                    if (code !== "0x") {
+                        delete groupedTransfers[g[0]]
+                    }
+                })
+                .catch((ex) => console.log("Blev fel: ", ex))
+        })
+        await Promise.all(checks);
+
+        setFetchedTransfers(groupedTransfers)
         setIsCalculatingBuyersOfAllContracts(false)
     }, [])
 

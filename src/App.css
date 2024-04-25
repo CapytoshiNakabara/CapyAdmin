@@ -53,3 +53,7 @@
   width: 100%;
   margin-bottom: 10px;
 }
+
+.menuitem {
+  cursor: pointer !important;
+}

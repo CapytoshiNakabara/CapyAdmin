@@ -112,7 +112,7 @@ export const TransferForm = ({ isFetchingTransfers, fetchTransfers, isFetchingBl
                                 <Dialog>
                                     <DialogTrigger asChild>
                                         <Button className='custom-button' type="submit">
-                                            Find buyers (Mainnet)
+                                            Find buyers
                                         </Button>
                                     </DialogTrigger>
                                     <DialogContent>
